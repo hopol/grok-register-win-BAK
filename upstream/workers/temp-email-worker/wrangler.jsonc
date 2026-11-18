@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "temp-email-worker",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-15",
+  "kv_namespaces": [
+    {
+      "binding": "EMAILS",
+      "id": "7823bd79cd1b4b8f98605e6a9ad9941a"
+    }
+  ],
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.html"],
+      "fallthrough": true
+    }
+  ]
+}

@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="csrf-token" content="{{ csrf_token }}"/>
+  <title>Grok Register 控制台</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}"/>
+  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script defer src="{{ url_for('static', filename='panel.js') }}"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">G</div>
+      <div><strong>Grok Register</strong><span>Windows 控制台</span></div>
+      <button class="icon-button mobile-only" type="button" onclick="toggleSidebar(false)" title="关闭菜单" aria-label="关闭菜单"><i data-lucide="x"></i></button>
+    </div>
+    <nav class="side-nav" aria-label="主导航">
+      <a class="nav-item active" href="#overview"><i data-lucide="layout-dashboard"></i><span>概览</span></a>
+      <a class="nav-item" href="#register"><i data-lucide="play-circle"></i><span>注册任务</span></a>
+      <a class="nav-item" href="#email"><i data-lucide="mail"></i><span>邮箱设置</span></a>
+      <a class="nav-item" href="#logs"><i data-lucide="terminal-square"></i><span>运行日志</span></a>
+      <a class="nav-item" href="#accounts"><i data-lucide="users"></i><span>账号文件</span><b>{{ account_count }}</b></a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="connection"><span class="status-dot online"></span><span>本地服务</span></div>
+      <span class="sidebar-path" title="{{ base_dir }}">{{ base_dir }}</span>
+    </div>
+  </aside>
+
+  <div class="mobile-backdrop" id="mobile_backdrop" onclick="toggleSidebar(false)"></div>
+
+  <main class="main-area">
+    <header class="topbar">
+      <button class="icon-button mobile-only" type="button" onclick="toggleSidebar(true)" title="打开菜单" aria-label="打开菜单"><i data-lucide="menu"></i></button>
+      <div class="page-heading">
+        <h1>注册控制台</h1>
+        <p>本机 Clash · 自动注册 · OAuth 转换</p>
+      </div>
+      <div class="top-actions">
+        <a class="button secondary" href="/download/sso.txt"><i data-lucide="file-down"></i><span>SSO</span></a>
+        <a class="button primary" href="/download/cpa.zip"><i data-lucide="package-check"></i><span>CPA</span></a>
+      </div>
+    </header>
+
+    <div class="content">
+      <section id="overview" class="section-block">
+        <div class="section-title-row">
+          <div><h2>运行概览</h2><p>账号、转换与任务状态</p></div>
+          <span class="live-state"><span class="status-dot" id="st_dot"></span><span id="st_status">idle</span></span>
+        </div>
+        <div class="stats-grid">
+          <article class="stat-card">
+            <div class="stat-head"><span>SSO 账号</span><i data-lucide="users"></i></div>
+            <strong id="st_accounts">{{ account_count }}</strong><small>{{ file_count }} 个账号文件</small>
+          </article>
+          <article class="stat-card">
+            <div class="stat-head"><span>CPA 已转换</span><i data-lucide="badge-check"></i></div>
+            <strong id="st_cpa_ok">{{ cpa_files }}</strong><small id="st_cpa_q">0待 / 0成 / 0败</small>
+          </article>
+          <article class="stat-card">
+            <div class="stat-head"><span>注册成功</span><i data-lucide="circle-check-big"></i></div>
+            <strong id="st_success">0</strong><small>本次运行</small>
+          </article>
+          <article class="stat-card warning-card">
+            <div class="stat-head"><span>注册失败</span><i data-lucide="triangle-alert"></i></div>
+            <strong id="st_fail">0</strong><small>本次运行</small>
+          </article>
+        </div>
+      </section>
+
+      <section id="register" class="section-block split-grid">
+        <article class="panel">
+          <div class="panel-header"><div><h2>注册任务</h2><p>批次完成后自动生成 CPA JSON</p></div><span class="pill neutral" id="job_badge">待命</span></div>
+          <div class="control-row">
+            <label class="field compact"><span>注册数量</span><input type="number" id="count" min="1" max="500" value="1"/></label>
+            <button class="button success command" id="btn_start" type="button" onclick="startJob()"><i data-lucide="play"></i><span>开始注册</span></button>
+            <button class="icon-button danger" id="btn_stop" type="button" onclick="stopJob()" title="停止任务" aria-label="停止任务"><i data-lucide="square"></i></button>
+          </div>
+          <div class="panel-status" id="cpa_hint">正在读取 CPA 状态</div>
+          <div class="panel-actions"><button class="button secondary" type="button" onclick="backfillCpa()"><i data-lucide="refresh-cw"></i><span>重新扫描 CPA</span></button></div>
+        </article>
+
+        <article class="panel compact-panel">
+          <div class="panel-header"><div><h2>当前批次</h2><p>实时处理统计</p></div><i data-lucide="activity"></i></div>
+          <div class="batch-summary">
+            <div><span>进度</span><strong id="st_round">0 / 0</strong></div>
+            <div><span>结果</span><strong id="st_sf">0 / 0</strong></div>
+            <div><span>代理</span><strong>External Clash</strong></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="email" class="section-block panel">
+        <div class="panel-header"><div><h2>邮箱设置</h2><p>注册验证码接收渠道</p></div><span class="pill" id="email_state">未加载</span></div>
+        <div class="email-toolbar">
+          <label class="field"><span>邮箱源</span>
+            <select id="email_provider" onchange="onEmailProviderChange()">
+              <option value="local_worker">本地域名邮箱</option>
+              <option value="tempmailer">Tempmailer</option>
+              <option value="custom">自定义 API</option>
+            </select>
+          </label>
+          <label class="toggle-field"><input type="checkbox" id="email_failover"/><span class="toggle"></span><span>失败自动切换</span></label>
+          <button class="button primary" type="button" onclick="saveEmailConfig().catch(error=>toast('保存失败: '+error.message))"><i data-lucide="save"></i><span>保存设置</span></button>
+        </div>
+
+        <div id="email_builtin_extra" class="provider-grid hidden">
+          <label class="field"><span>Tempmailer 域名</span><input type="text" id="tempmailer_domain" placeholder="bluenode.cc"/></label>
+        </div>
+
+        <div id="email_local_worker_box" class="provider-grid">
+          <label class="field wide"><span>Worker API</span><input type="url" id="local_worker_api_base" placeholder="https://worker.example.dev"/></label>
+          <label class="field"><span>邮箱域名</span><input type="text" id="local_worker_domain" placeholder="mail.example.com"/></label>
+          <label class="field"><span>管理 Token</span><input type="password" id="local_worker_admin_token" autocomplete="new-password" placeholder="留空保持已保存值"/></label>
+        </div>
+
+        <div id="email_custom_box" class="provider-grid hidden">
+          <label class="field wide"><span>API 根地址</span><input type="url" id="custom_api_base" placeholder="https://mail.example.com"/></label>
+          <label class="field"><span>API Key</span><input type="password" id="custom_api_key" autocomplete="new-password" placeholder="留空保持已保存值"/></label>
+          <label class="field"><span>鉴权方式</span><select id="custom_auth_mode"><option value="x-admin-auth">x-admin-auth</option><option value="bearer">Bearer</option><option value="x-api-key">X-API-Key</option><option value="query-key">Query Key</option><option value="none">无鉴权</option></select></label>
+          <label class="field"><span>邮箱域名</span><input type="text" id="custom_domain"/></label>
+          <label class="field"><span>创建路径</span><input type="text" id="custom_path_accounts"/></label>
+          <label class="field"><span>收信路径</span><input type="text" id="custom_path_messages"/></label>
+          <label class="field"><span>Token 路径</span><input type="text" id="custom_path_token"/></label>
+        </div>
+        <div class="inline-note" id="email_hint">正在加载邮箱配置</div>
+      </section>
+
+      <section id="logs" class="section-block panel log-panel">
+        <div class="panel-header"><div><h2>运行日志</h2><p>当前任务输出</p></div><button class="icon-button" type="button" onclick="clearLogView()" title="清空显示" aria-label="清空日志显示"><i data-lucide="eraser"></i></button></div>
+        <pre id="logbox">等待任务</pre>
+      </section>
+
+      <section id="accounts" class="section-block panel table-panel">
+        <div class="panel-header table-header">
+          <div><h2>账号文件</h2><p><span id="st_files">{{ file_count }}</span> 个文件</p></div>
+          <div class="toolbar-actions">
+            <button class="icon-button" type="button" onclick="toggleSelectAllFiles(true)" title="全选" aria-label="全选"><i data-lucide="list-checks"></i></button>
+            <button class="icon-button danger" type="button" onclick="deleteSelectedFiles()" title="删除选中" aria-label="删除选中"><i data-lucide="trash-2"></i></button>
+          </div>
+        </div>
+        {% if files %}
+        <div class="table-scroll"><table><thead><tr><th class="check-col"><input type="checkbox" id="chk_all_files" onclick="toggleSelectAllFiles(this.checked)"/></th><th>文件</th><th>账号数</th><th>创建时间</th><th class="action-col">操作</th></tr></thead>
+        <tbody>{% for f in files %}<tr><td><input type="checkbox" class="chk-file" value="{{ f.name }}"/></td><td><strong class="file-name">{{ f.name }}</strong></td><td><span class="pill neutral">{{ f.count }}</span></td><td class="muted">{{ f.mtime }}</td><td><div class="row-actions"><a class="icon-button" href="/preview/{{ f.name }}" title="预览" aria-label="预览"><i data-lucide="eye"></i></a><a class="icon-button" href="/download/{{ f.name }}" title="下载" aria-label="下载"><i data-lucide="download"></i></a></div></td></tr>{% endfor %}</tbody></table></div>
+        {% else %}<div class="empty-state"><i data-lucide="inbox"></i><strong>暂无账号文件</strong></div>{% endif %}
+      </section>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+</body>
+</html>

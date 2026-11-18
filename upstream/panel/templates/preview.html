@@ -1,0 +1,3 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>{{ name }}</title><link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}"/></head>
+<body class="preview-page"><main class="preview-shell"><header><div><h1>{{ name }}</h1><p>账号文件预览</p></div><div class="top-actions"><a class="button secondary" href="/">返回</a><a class="button primary" href="/download/{{ name }}">下载</a></div></header><pre>{{ content }}</pre></main></body></html>
